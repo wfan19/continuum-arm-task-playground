@@ -25,7 +25,7 @@ def plot_poses(mat_poses, fig=go.Figure()):
 
         idx += 3
         
-    axis_colors = ["#D81B60", "#00BF9F", "#278DE6"]
+    axis_colors = ["#ee2b8b", "#2db67d", "#648fff"]
     axis_names = ["X", "Y"]
     quiver_size=7
     marker_size=12
@@ -41,7 +41,7 @@ def plot_poses(mat_poses, fig=go.Figure()):
         name="Poses",
         legendgroup="backbone",
         line=dict(color="darkgray", width=linewidth),
-        marker=dict(size=marker_size, color="darkgray")
+        marker=dict(size=marker_size, color="gray")
     ))
 
     for i_axis, axis in enumerate(body_points_axes):
