@@ -1,5 +1,5 @@
 import numpy as np
-from py_attainability.lie import Rot2, Omega2
+from py_attainability.lie import Rot2
 from scipy.linalg import logm
 
 def rotation(mat_pose2):
@@ -49,6 +49,7 @@ def adjoint(mat_pose2):
     adj_out = np.eye(3)
     adj_out[0:2, 0:2] = R
     adj_out[0:2, 2] = t
+    return adj_out
 
 def left_lifted_action(mat_pose2):
     """

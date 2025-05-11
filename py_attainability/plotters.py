@@ -5,8 +5,9 @@ from py_attainability.lie import Pose2
 
 def plot_poses(mat_poses, fig=go.Figure()):
     body_points_axes = np.zeros([2, 2, 3*mat_poses.shape[0]])
-    axis_length=0.1
+    axis_length=0.05
     idx = 0
+    # Prepare data for plotting the axes
     for i, pose in enumerate(mat_poses):
         # Iterate through poses. For each pose:
         #   - Add its position to each body_points_axes
@@ -26,7 +27,23 @@ def plot_poses(mat_poses, fig=go.Figure()):
         
     axis_colors = ["#D81B60", "#00BF9F", "#278DE6"]
     axis_names = ["X", "Y"]
-    marker_size=3
+    quiver_size=7
+    marker_size=12
+    linewidth=4
+
+    xs = mat_poses[:, 0, 2]
+    ys = mat_poses[:, 1, 2]
+
+    fig.add_trace(go.Scatter(
+        x=xs,
+        y = ys,
+        mode="markers+lines",
+        name="Poses",
+        legendgroup="backbone",
+        line=dict(color="darkgray", width=linewidth),
+        marker=dict(size=marker_size, color="darkgray")
+    ))
+
     for i_axis, axis in enumerate(body_points_axes):
         fig.add_trace(go.Scatter(
             x = axis[0, :],
@@ -34,17 +51,18 @@ def plot_poses(mat_poses, fig=go.Figure()):
             name=axis_names[i_axis],
             mode="lines+markers",
             showlegend=False,
-            marker=dict(color=axis_colors[i_axis], size=marker_size)
+            marker=dict(color=axis_colors[i_axis], size=quiver_size)
         ))
 
-    xs = mat_poses[:, 0, 2]
-    ys = mat_poses[:, 1, 2]
     fig.add_trace(go.Scatter(
         x=xs,
         y = ys,
         mode="markers",
-        name="Poses"
+        name="Poses",
+        legendgroup="backbone",
+        marker=dict(size=marker_size, color="darkgray")
     ))
 
     fig.update_yaxes(scaleanchor="x", scaleratio=1)
+    fig.update_layout(height=800)
     return fig

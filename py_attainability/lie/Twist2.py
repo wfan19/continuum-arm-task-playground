@@ -10,6 +10,7 @@ def hat(v_twist2):
     mat_twist2 = np.zeros(3)
     mat_twist2[0:2, 0:2] = mat_skew_sym
     mat_twist2[0:2, 2] = np.array([vx, vy])
+    return mat_twist2
 
 def vee(mat_twist2):
     """
@@ -20,6 +21,7 @@ def vee(mat_twist2):
 
     v_twist2[0:2] = mat_twist2[0:2, 2]
     v_twist2[2] = mat_twist2[1, 0]
+    return v_twist2
 
 def expm(v_twist2):
     """
@@ -37,4 +39,5 @@ def expm(v_twist2):
     R = Rot2.hat(omega)
     Pose2_out = np.eye(3)
     Pose2_out[0:2, 0:2] = R 
-    Pose2_out[0:2, 2] = V @ np.array([[vx], [vy]])
+    Pose2_out[0:2, 2] = np.squeeze(V @ np.array([[vx], [vy]]))
+    return Pose2_out
