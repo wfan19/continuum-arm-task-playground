@@ -1,5 +1,5 @@
 import numpy as np
-import Rot2, Omega2
+from py_attainability.lie import Rot2, Omega2
 from scipy.linalg import logm
 
 def rotation(mat_pose2):

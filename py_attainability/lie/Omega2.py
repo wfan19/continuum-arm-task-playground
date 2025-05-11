@@ -1,5 +1,5 @@
 import numpy as np
-import Rot2
+from py_attainability.lie import Rot2
 
 def hat(theta):
     """

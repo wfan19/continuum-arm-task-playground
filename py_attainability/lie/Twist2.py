@@ -1,5 +1,5 @@
 import numpy as np
-import Omega2, Rot2, Pose2
+from py_attainability.lie import Omega2, Rot2, Pose2
 
 def hat(v_twist2):
     """
