@@ -1,5 +1,6 @@
 from typing import List
 import copy
+import uuid
 
 import streamlit as st
 from streamlit_vertical_slider import vertical_slider as st_vert_slider
@@ -15,14 +16,15 @@ from py_attainability import actuator_models, mechanics
 
 def initialize_st_state():
     # Initialize session state variables
-    state_vars = [
-        "arm_designs",      # List of arm designs
-        "arm_design"        # Arm design stored in the interactive-design section
-    ]
+    state_vars_and_defaults = {
+        "arm_designs": None,      # List of arm designs
+        "arm_design": mechanics.ArmDesign.make_default(),        # Arm design stored in the interactive-design section
+        "dataframe_key": str(uuid.uuid4())
+    }
 
-    for state_var_name in state_vars:
+    for state_var_name, default_val in state_vars_and_defaults.items():
         if state_var_name not in st.session_state:
-            st.session_state[state_var_name] = None
+            st.session_state[state_var_name] = default_val
 
 def arm_designs_list_to_df(arm_designs: List[mechanics.ArmDesign]):
     arm_names = []
@@ -48,6 +50,17 @@ def arm_designs_list_to_df(arm_designs: List[mechanics.ArmDesign]):
     df_out = pd.DataFrame(dict_arm_designs)
     return df_out
 
+def cb_load_selected_arm(selection):
+    st.session_state.dataframe_key = str(uuid.uuid4())
+    selected_rows = selection["selection"]["rows"]
+    design_selected = len(selected_rows) != 0
+    i_selected = None if not design_selected else selected_rows[0]
+
+    print(f"Setting the following arm to be the st.sesion_state.arm_design")
+    print(st.session_state.arm_designs[i_selected])
+
+    st.session_state.arm_design = st.session_state.arm_designs[i_selected]
+
 def make_arm_designs():
     """
     Placeholder function to create some stored arm-designs for testing purposes
@@ -68,22 +81,21 @@ def make_arm_designs():
 
     st.session_state.arm_designs = [arm_design_1, arm_design_2, arm_design_3]
 
-
 def main():
+    print("========================= Streamlit refresh =========================")
     # Initialize streamlit state variables
     initialize_st_state()
     make_arm_designs()
-    st.session_state.arm_design = mechanics.ArmDesign.make_default()
 
     st.header("Arm designer")
 
     st.text("Select a design - or create a new one!")
     arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
-    selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True)
+    selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True, key=st.session_state.dataframe_key)
     selected_rows = selection["selection"]["rows"]
     design_selected = len(selected_rows) != 0
     i_selected = None if not design_selected else selected_rows[0]
-    st.button("Set as current")
+    st.button("Set as current", on_click=cb_load_selected_arm, args=(selection,))
 
     st.subheader("Design")
     st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
@@ -103,7 +115,7 @@ def main():
         with col:
             actuator_model_name = st.selectbox("Actuator model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
             model_i = map_model_name_to_class[actuator_model_name]
-            if i_col < len(st.session_state.arm_design.actuators) - 1:
+            if i_col <= len(st.session_state.arm_design.actuators) - 1:
                 default_radius = st.session_state.arm_design.actuators[i_col].rho
             else:
                 default_radius = 0.
@@ -168,6 +180,7 @@ def main():
         fig = go.Figure()
         mat_poses = calc_poses(arm_design.g_0, eq_shape)
         plot_poses(mat_poses, fig)
+        fig.update_layout(margin=dict(t=30, b=0), height=700)
 
         st.plotly_chart(fig)
         
