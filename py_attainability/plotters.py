@@ -44,13 +44,15 @@ def plot_poses(mat_poses, fig=go.Figure()):
         marker=dict(size=marker_size, color="gray")
     ))
 
+    axis_name = ["X", "Y", "Z"]
     for i_axis, axis in enumerate(body_points_axes):
         fig.add_trace(go.Scatter(
             x = axis[0, :],
             y = axis[1, :],
-            name=axis_names[i_axis],
+            name=f"Transforms",
             mode="lines+markers",
-            showlegend=False,
+            showlegend=True if i_axis == 0 else False,
+            legendgroup="transforms",
             marker=dict(color=axis_colors[i_axis], size=quiver_size)
         ))
 
@@ -60,6 +62,7 @@ def plot_poses(mat_poses, fig=go.Figure()):
         mode="markers",
         name="Poses",
         legendgroup="backbone",
+        showlegend=False,
         marker=dict(size=marker_size, color="darkgray")
     ))
 

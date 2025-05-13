@@ -19,7 +19,7 @@ def initialize_st_state():
     state_vars_and_defaults = {
         "arm_designs": None,      # List of arm designs
         "arm_design": mechanics.ArmDesign.make_default(),        # Arm design stored in the interactive-design section
-        "dataframe_key": str(uuid.uuid4())
+        "dataframe_key": str(uuid.uuid4()),
     }
 
     for state_var_name, default_val in state_vars_and_defaults.items():
@@ -54,12 +54,22 @@ def cb_load_selected_arm(selection):
     st.session_state.dataframe_key = str(uuid.uuid4())
     selected_rows = selection["selection"]["rows"]
     design_selected = len(selected_rows) != 0
-    i_selected = None if not design_selected else selected_rows[0]
 
-    print(f"Setting the following arm to be the st.sesion_state.arm_design")
-    print(st.session_state.arm_designs[i_selected])
+    if design_selected:
+        i_selected = selected_rows[0]
+        print(f"Setting the following arm to be the st.sesion_state.arm_design")
+        print(st.session_state.arm_designs[i_selected])
 
-    st.session_state.arm_design = st.session_state.arm_designs[i_selected]
+        st.session_state.arm_design = st.session_state.arm_designs[i_selected]
+
+def cb_on_change_n_actuators():
+    n_actuators_new = st.session_state.KEY_N_ACTUATORS
+    if n_actuators_new < len(st.session_state.arm_design.actuators):
+        st.session_state.arm_design.actuators.pop()
+    elif n_actuators_new > len(st.session_state.arm_design.actuators):
+        st.session_state.arm_design.actuators.append(mechanics.Actuator(0.0, actuator_models.Bellow))
+    else:
+        raise IndexError
 
 def make_arm_designs():
     """
@@ -88,38 +98,37 @@ def main():
     make_arm_designs()
 
     st.header("Arm designer")
-
-    st.text("Select a design - or create a new one!")
+    st.text("Select an existing design - or create a new one!")
     arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
     selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True, key=st.session_state.dataframe_key)
     selected_rows = selection["selection"]["rows"]
     design_selected = len(selected_rows) != 0
     i_selected = None if not design_selected else selected_rows[0]
-    st.button("Set as current", on_click=cb_load_selected_arm, args=(selection,))
+    st.button("Edit", on_click=cb_load_selected_arm, args=(selection,))
 
     st.subheader("Design")
     st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
+
     st.text("Actuators")
     n_actuators = st.number_input(
         "Number of actuators [#]",
         min_value=2,
         max_value=6,
         value=len(st.session_state.arm_design.actuators),
-        disabled=design_selected
+        disabled=design_selected,
+        key="KEY_N_ACTUATORS",
+        on_change=cb_on_change_n_actuators
     )
     actuators = []
-    cols_actuator_design = st.columns(n_actuators)
+    cols_actuator_design = st.columns(n_actuators, border=True)
     model_classes = actuator_models.ActuatorModel.__subclasses__()
     map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
     for i_col, col in enumerate(cols_actuator_design):
         with col:
-            actuator_model_name = st.selectbox("Actuator model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
+            actuator_model_name = st.selectbox("Model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
             model_i = map_model_name_to_class[actuator_model_name]
-            if i_col <= len(st.session_state.arm_design.actuators) - 1:
-                default_radius = st.session_state.arm_design.actuators[i_col].rho
-            else:
-                default_radius = 0.
-            radius_i = st.number_input("Position[m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
+            default_radius = st.session_state.arm_design.actuators[i_col].rho
+            radius_i = st.number_input("Position [m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
 
         actuator_i = mechanics.Actuator(radius_i, model_i)
         actuators.append(actuator_i)
