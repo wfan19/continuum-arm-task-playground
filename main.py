@@ -1,6 +1,7 @@
 from typing import List
 import copy
 import uuid
+from contextlib import contextmanager
 
 import streamlit as st
 from streamlit_vertical_slider import vertical_slider as st_vert_slider
@@ -13,11 +14,33 @@ from py_attainability.lie import Pose2
 from py_attainability.plotters import plot_poses
 from py_attainability.rod import calc_poses
 from py_attainability import actuator_models, mechanics
+from py_attainability.utils import st_horizontal
+
+def make_default_arm_designs():
+    """
+    Placeholder function to create some stored arm-designs for testing purposes
+    """
+    arm_design_1 = mechanics.ArmDesign.make_default()
+    arm_design_1.l_0 = 0.4
+    arm_design_1.name="Default arm"
+
+    arm_design_2 = copy.deepcopy(arm_design_1)
+    for actuator in arm_design_2.actuators:
+        actuator.rho *= 2
+    arm_design_2.name="Twice as wide"
+
+    four_bellow_radii = [-0.1, -0.03, 0.03, 0.06]
+    models = [actuator_models.Bellow for i in range(4)]
+    actuators = mechanics.Actuator.from_lists(four_bellow_radii, models)
+    arm_design_3 = mechanics.ArmDesign(actuators, l_0=0.4)
+
+    return [arm_design_1, arm_design_2, arm_design_3]
+
 
 def initialize_st_state():
     # Initialize session state variables
     state_vars_and_defaults = {
-        "arm_designs": None,      # List of arm designs
+        "arm_designs": make_default_arm_designs(),      # List of arm designs
         "arm_design": mechanics.ArmDesign.make_default(),        # Arm design stored in the interactive-design section
         "dataframe_key": str(uuid.uuid4()),
     }
@@ -61,6 +84,15 @@ def cb_load_selected_arm(selection):
         print(st.session_state.arm_designs[i_selected])
 
         st.session_state.arm_design = st.session_state.arm_designs[i_selected]
+    
+def cb_delete_selected_arm(selection):
+    selected_rows = selection["selection"]["rows"]
+    design_selected = len(selected_rows) != 0
+
+    if design_selected:
+        i_selected = selected_rows[0]
+        st.session_state.arm_designs.pop(i_selected)
+    
 
 def cb_on_change_n_actuators():
     n_actuators_new = st.session_state.KEY_N_ACTUATORS
@@ -71,31 +103,19 @@ def cb_on_change_n_actuators():
     else:
         raise IndexError
 
-def make_arm_designs():
-    """
-    Placeholder function to create some stored arm-designs for testing purposes
-    """
-    arm_design_1 = mechanics.ArmDesign.make_default()
-    arm_design_1.l_0 = 0.4
-    arm_design_1.name="Default arm"
-
-    arm_design_2 = copy.deepcopy(arm_design_1)
-    for actuator in arm_design_2.actuators:
-        actuator.rho *= 2
-    arm_design_2.name="Twice as wide"
-
-    four_bellow_radii = [-0.1, -0.03, 0.03, 0.06]
-    models = [actuator_models.Bellow for i in range(4)]
-    actuators = mechanics.Actuator.from_lists(four_bellow_radii, models)
-    arm_design_3 = mechanics.ArmDesign(actuators, l_0=0.4)
-
-    st.session_state.arm_designs = [arm_design_1, arm_design_2, arm_design_3]
+@st.dialog("Save design")
+def cb_save_design_dialog():
+    name = st.text_input("Design name", value=f"Arm {len(st.session_state.arm_designs)}")
+    if st.button("Save", key="KEY_SAVE_ARM_DIALOG"):
+        design_to_save = copy.deepcopy(st.session_state.arm_design)
+        design_to_save.name = name
+        st.session_state.arm_designs.append(design_to_save)
+        st.rerun()
 
 def main():
     print("========================= Streamlit refresh =========================")
     # Initialize streamlit state variables
     initialize_st_state()
-    make_arm_designs()
 
     st.header("Arm designer")
     st.text("Select an existing design - or create a new one!")
@@ -104,7 +124,10 @@ def main():
     selected_rows = selection["selection"]["rows"]
     design_selected = len(selected_rows) != 0
     i_selected = None if not design_selected else selected_rows[0]
-    st.button("Edit", on_click=cb_load_selected_arm, args=(selection,))
+    with st_horizontal():
+        st.button("Edit", on_click=cb_load_selected_arm, args=(selection,))
+        if design_selected:
+            st.button("Delete", on_click=cb_delete_selected_arm, args=(selection,))
 
     st.subheader("Design")
     st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
@@ -133,8 +156,13 @@ def main():
         actuator_i = mechanics.Actuator(radius_i, model_i)
         actuators.append(actuator_i)
     st.session_state.arm_design.actuators = actuators
-    with st.popover("Arm design debug"):
-        st.write(st.session_state.arm_design)
+
+    with st_horizontal():
+        if st.button("Save"):
+            cb_save_design_dialog()
+
+        with st.popover("Arm design debug"):
+            st.write(st.session_state.arm_design)
 
     # Create arm design objects
     if design_selected:
