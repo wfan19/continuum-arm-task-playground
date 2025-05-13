@@ -7,22 +7,23 @@ from scipy.optimize import fsolve, least_squares
 
 from py_attainability.rod import calc_poses
 from py_attainability.lie import Pose2
+from py_attainability import actuator_models
 
 @dataclass
 class Actuator:
     rho:        float
-    f_force:    callable
-    p_max:      float
+    model:      actuator_models.ActuatorModel
 
     @staticmethod
-    def from_lists(rhos, fs, p_maxs):
+    def from_lists(rhos, models):
         """
         Constructor for creating a list of actuator objects from individual lists of parameters
         """
         actuators_out = []
-        for rho, f_force, p_max in zip(rhos, fs, p_maxs):
-            new_actuator = Actuator(rho, f_force, p_max)
+        for rho, model in zip(rhos, models):
+            new_actuator = Actuator(rho, model)
             actuators_out.append(new_actuator)
+
         return actuators_out
 
 @dataclass
@@ -31,6 +32,21 @@ class ArmDesign:
     l_0:        float       = 0.5
     g_0:        np.array    = field(default_factory=lambda: Pose2.hat(np.array([0, 0, -np.pi/2])))
     name:       str     = "Arm"
+
+    @staticmethod
+    def make_default():
+        """
+        Make the default arm - a 2-bellow arm of length 0.5m and radius 0.05m
+        """
+        arm_length = 0.5
+        arm_width = 0.05
+
+        rhos = [-arm_width, arm_width]
+        models = [actuator_models.Bellow, actuator_models.Bellow]
+
+        actuators = Actuator.from_lists(rhos, models)
+        arm_design = ArmDesign(actuators, l_0=arm_length)
+        return arm_design
 
 def calc_reaction_wrench(mat_segment_twists: np.array, pressures: np.array, arm_design: ArmDesign) -> np.array:
     """
@@ -52,10 +68,10 @@ def calc_reaction_wrench(mat_segment_twists: np.array, pressures: np.array, arm_
         curvatures_centerline = mat_segment_twists[2, :]
         lengths[i_actuator, :] = lengths_centerline - actuator.rho*curvatures_centerline
         strains[i_actuator, :] = (lengths[i_actuator, :] - arm_design.l_0) / arm_design.l_0
-        forces[i_actuator, :] = arm_design.actuators[i_actuator].f_force(strains[i_actuator, :], pressures[i_actuator])
+        forces[i_actuator, :] = arm_design.actuators[i_actuator].model.force(strains[i_actuator, :], pressures[i_actuator])
         
         curvatures[i_actuator, :] = curvatures_centerline / lengths[i_actuator, :]
-        k_moment = (-1/3.5) * (pressures[i_actuator] / arm_design.actuators[i_actuator].p_max)
+        k_moment = (-1/3.5) * (pressures[i_actuator] / arm_design.actuators[i_actuator].model.p_bounds[1])
         moments[i_actuator, :] = k_moment * curvatures[i_actuator, :]
 
     mat_A = np.zeros([3, N_actuators])

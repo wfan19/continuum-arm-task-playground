@@ -1,4 +1,5 @@
 from typing import List
+import copy
 
 import streamlit as st
 from streamlit_vertical_slider import vertical_slider as st_vert_slider
@@ -10,12 +11,13 @@ import pandas as pd
 from py_attainability.lie import Pose2
 from py_attainability.plotters import plot_poses
 from py_attainability.rod import calc_poses
-from py_attainability import mechanics, actuators
+from py_attainability import actuator_models, mechanics
 
 def initialize_st_state():
     # Initialize session state variables
     state_vars = [
-        "arm_designs"
+        "arm_designs",      # List of arm designs
+        "arm_design"        # Arm design stored in the interactive-design section
     ]
 
     for state_var_name in state_vars:
@@ -26,47 +28,55 @@ def arm_designs_list_to_df(arm_designs: List[mechanics.ArmDesign]):
     arm_names = []
     arm_n_actuators = []
     actuator_rhos = []
+    arm_lengths = []
+    actuator_models = []
     for arm_design in arm_designs:
         arm_names.append(arm_design.name)
         arm_n_actuators.append(len(arm_design.actuators))
+        arm_lengths.append(arm_design.l_0)
         actuator_rhos.append([actuator.rho for actuator in arm_design.actuators])
+        actuator_models.append([actuator.model.__name__ for actuator in arm_design.actuators])
 
     dict_arm_designs = {
         "Names": arm_names,
-        "N actuators": arm_n_actuators,
-        "Actuator radii": actuator_rhos
+        "Actuators": arm_n_actuators,
+        "Length [m]": arm_lengths,
+        "Actuator radii [m]": actuator_rhos,
+        "Actuator models": actuator_models
     }
 
     df_out = pd.DataFrame(dict_arm_designs)
     return df_out
 
 def make_arm_designs():
-    arm_width = 0.03
-    arm_length = 0.4
-    rhos = [-arm_width, arm_width]
-    f_forces = [actuators.bellow, actuators.bellow]
-    p_maxs = [50, 50]
-    muscles = mechanics.Actuator.from_lists(rhos, f_forces, p_maxs)
-    arm_design_1 = mechanics.ArmDesign(muscles, l_0=arm_length)
+    """
+    Placeholder function to create some stored arm-designs for testing purposes
+    """
+    arm_design_1 = mechanics.ArmDesign.make_default()
+    arm_design_1.l_0 = 0.4
+    arm_design_1.name="Default arm"
 
-    arm_design_2 = arm_design_1
+    arm_design_2 = copy.deepcopy(arm_design_1)
     for actuator in arm_design_2.actuators:
         actuator.rho *= 2
+    arm_design_2.name="Twice as wide"
 
     four_bellow_radii = [-0.1, -0.03, 0.03, 0.06]
-    f_forces = [actuators.bellow for i in range(4)]
-    p_maxs = [50 for i in range(4)]
-    muscles = mechanics.Actuator.from_lists(four_bellow_radii, f_forces, p_maxs)
-    arm_design_3 = mechanics.ArmDesign(muscles, l_0=arm_length)
+    models = [actuator_models.Bellow for i in range(4)]
+    actuators = mechanics.Actuator.from_lists(four_bellow_radii, models)
+    arm_design_3 = mechanics.ArmDesign(actuators, l_0=0.4)
 
     st.session_state.arm_designs = [arm_design_1, arm_design_2, arm_design_3]
 
 
+# Initialize streamlit state variables
 initialize_st_state()
 make_arm_designs()
+st.session_state.arm_design = mechanics.ArmDesign.make_default()
 
-st.header("Arm simulation")
+st.header("Arm designer")
 
+st.text("Select a design - or create a new one!")
 arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
 selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True)
 selected_rows = selection["selection"]["rows"]
@@ -74,23 +84,45 @@ design_selected = len(selected_rows) != 0
 
 i_selected = None if not design_selected else selected_rows[0]
 
+st.subheader("Design")
+st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
+st.text("Actuators")
+n_actuators = st.number_input(
+    "Number of actuators [#]",
+    min_value=2,
+    max_value=6,
+    value=len(st.session_state.arm_design.actuators),
+    disabled=design_selected
+)
+actuators = []
+cols_actuator_design = st.columns(n_actuators)
+model_classes = actuator_models.ActuatorModel.__subclasses__()
+map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
+for i_col, col in enumerate(cols_actuator_design):
+    with col:
+        actuator_model_name = st.selectbox("Actuator model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
+        model_i = map_model_name_to_class[actuator_model_name]
+        if i_col < len(st.session_state.arm_design.actuators) - 1:
+            default_radius = st.session_state.arm_design.actuators[i_col].rho
+        else:
+            default_radius = 0.
+        radius_i = st.number_input("Position[m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
+
+    actuator_i = mechanics.Actuator(radius_i, model_i)
+    actuators.append(actuator_i)
+st.session_state.arm_design.actuators = actuators
+st.write(st.session_state.arm_design)
+
+# Create arm design objects
+if design_selected:
+    arm_design = st.session_state.arm_designs[i_selected]
+else:
+    arm_design = st.session_state.arm_design
+
+st.divider()
+
 col_params, col_result = st.columns(2)
 with col_params:
-    st.subheader("Design")
-    arm_length = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
-    arm_width = st.slider("Arm width [cm]", min_value=0.01, max_value=0.2, value=0.05, disabled=design_selected)
-
-    # Create arm design objects
-    if design_selected:
-        arm_design = st.session_state.arm_designs[i_selected]
-    else:
-        rhos = [-arm_width, arm_width]
-        f_forces = [actuators.bellow, actuators.bellow]
-        p_maxs = [50, 50]
-        actuators = [mechanics.Actuator(rho, f_force, p_max) for rho, f_force, p_max in zip(rhos, f_forces, p_maxs)]
-        arm_design = mechanics.ArmDesign(actuators, l_0=arm_length)
-
-    st.divider()
 
     # CONTROL UI
     st.subheader("Control")
@@ -100,8 +132,8 @@ with col_params:
         with col:
             pressures[i] = st_vert_slider(
                 label=f"Pressure {i}", 
-                min_value=0,
-                max_value=arm_design.actuators[i].p_max,
+                min_value=arm_design.actuators[i].model.p_bounds[0],
+                max_value=arm_design.actuators[i].model.p_bounds[1],
                 default_value=0,
                 thumb_color="#ee2b8b",
                 slider_color="#ee2b8b"
@@ -130,7 +162,7 @@ with col_params:
 
 # Create body-point-axes
 with col_result:
-    st.subheader("Result")
+    st.subheader("Simulated Arm")
     fig = go.Figure()
     mat_poses = calc_poses(arm_design.g_0, eq_shape)
     plot_poses(mat_poses, fig)
