@@ -69,102 +69,107 @@ def make_arm_designs():
     st.session_state.arm_designs = [arm_design_1, arm_design_2, arm_design_3]
 
 
-# Initialize streamlit state variables
-initialize_st_state()
-make_arm_designs()
-st.session_state.arm_design = mechanics.ArmDesign.make_default()
+def main():
+    # Initialize streamlit state variables
+    initialize_st_state()
+    make_arm_designs()
+    st.session_state.arm_design = mechanics.ArmDesign.make_default()
 
-st.header("Arm designer")
+    st.header("Arm designer")
 
-st.text("Select a design - or create a new one!")
-arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
-selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True)
-selected_rows = selection["selection"]["rows"]
-design_selected = len(selected_rows) != 0
+    st.text("Select a design - or create a new one!")
+    arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
+    selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True)
+    selected_rows = selection["selection"]["rows"]
+    design_selected = len(selected_rows) != 0
+    i_selected = None if not design_selected else selected_rows[0]
+    st.button("Set as current")
 
-i_selected = None if not design_selected else selected_rows[0]
-
-st.subheader("Design")
-st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
-st.text("Actuators")
-n_actuators = st.number_input(
-    "Number of actuators [#]",
-    min_value=2,
-    max_value=6,
-    value=len(st.session_state.arm_design.actuators),
-    disabled=design_selected
-)
-actuators = []
-cols_actuator_design = st.columns(n_actuators)
-model_classes = actuator_models.ActuatorModel.__subclasses__()
-map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
-for i_col, col in enumerate(cols_actuator_design):
-    with col:
-        actuator_model_name = st.selectbox("Actuator model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
-        model_i = map_model_name_to_class[actuator_model_name]
-        if i_col < len(st.session_state.arm_design.actuators) - 1:
-            default_radius = st.session_state.arm_design.actuators[i_col].rho
-        else:
-            default_radius = 0.
-        radius_i = st.number_input("Position[m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
-
-    actuator_i = mechanics.Actuator(radius_i, model_i)
-    actuators.append(actuator_i)
-st.session_state.arm_design.actuators = actuators
-st.write(st.session_state.arm_design)
-
-# Create arm design objects
-if design_selected:
-    arm_design = st.session_state.arm_designs[i_selected]
-else:
-    arm_design = st.session_state.arm_design
-
-st.divider()
-
-col_params, col_result = st.columns(2)
-with col_params:
-
-    # CONTROL UI
-    st.subheader("Control")
-    cols = st.columns(len(arm_design.actuators))
-    pressures = np.zeros(len(arm_design.actuators))
-    for i, col in enumerate(cols):
+    st.subheader("Design")
+    st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
+    st.text("Actuators")
+    n_actuators = st.number_input(
+        "Number of actuators [#]",
+        min_value=2,
+        max_value=6,
+        value=len(st.session_state.arm_design.actuators),
+        disabled=design_selected
+    )
+    actuators = []
+    cols_actuator_design = st.columns(n_actuators)
+    model_classes = actuator_models.ActuatorModel.__subclasses__()
+    map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
+    for i_col, col in enumerate(cols_actuator_design):
         with col:
-            pressures[i] = st_vert_slider(
-                label=f"Pressure {i}", 
-                min_value=arm_design.actuators[i].model.p_bounds[0],
-                max_value=arm_design.actuators[i].model.p_bounds[1],
-                default_value=0,
-                thumb_color="#ee2b8b",
-                slider_color="#ee2b8b"
-            )
+            actuator_model_name = st.selectbox("Actuator model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
+            model_i = map_model_name_to_class[actuator_model_name]
+            if i_col < len(st.session_state.arm_design.actuators) - 1:
+                default_radius = st.session_state.arm_design.actuators[i_col].rho
+            else:
+                default_radius = 0.
+            radius_i = st.number_input("Position[m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
+
+        actuator_i = mechanics.Actuator(radius_i, model_i)
+        actuators.append(actuator_i)
+    st.session_state.arm_design.actuators = actuators
+    with st.popover("Arm design debug"):
+        st.write(st.session_state.arm_design)
+
+    # Create arm design objects
+    if design_selected:
+        arm_design = st.session_state.arm_designs[i_selected]
+    else:
+        arm_design = st.session_state.arm_design
 
     st.divider()
 
-    st.subheader("External load")
-    col_load_x, col_load_y, col_load_theta = st.columns(3)
-    with col_load_x:
-        tip_load_x = st.slider("Tip load X [N]", min_value=-10, max_value=10, value=0)
-    with col_load_y:
-        tip_load_y = st.slider("Tip load Y [N]", min_value=-10, max_value=10, value=0)
-    with col_load_theta:
-        tip_load_torque = st.slider("Tip load Torque [Nm]", min_value=-5, max_value=5, value=0)
+    col_params, col_result = st.columns(2)
+    with col_params:
 
-    Q_tip = np.atleast_2d(np.array([tip_load_x, tip_load_y, tip_load_torque])).T
+        # CONTROL UI
+        st.subheader("Control")
+        cols = st.columns(len(arm_design.actuators))
+        pressures = np.zeros(len(arm_design.actuators))
+        for i, col in enumerate(cols):
+            with col:
+                pressures[i] = st_vert_slider(
+                    label=f"Pressure {i}", 
+                    min_value=arm_design.actuators[i].model.p_bounds[0],
+                    max_value=arm_design.actuators[i].model.p_bounds[1],
+                    default_value=0,
+                    thumb_color="#ee2b8b",
+                    slider_color="#ee2b8b"
+                )
 
-    st.divider()
+        st.divider()
 
-    # SIMULATION PARAMETERS UI
-    with st.popover("Simulation parameters"):
-        n_segs = st.number_input("Segments [#]", min_value=4, max_value=20, value=5)
-    eq_shape = mechanics.solve_equilibrium_shape(n_segs, arm_design, pressures, Q_tip)
+        st.subheader("External load")
+        col_load_x, col_load_y, col_load_theta = st.columns(3)
+        with col_load_x:
+            tip_load_x = st.slider("Tip load X [N]", min_value=-10, max_value=10, value=0)
+        with col_load_y:
+            tip_load_y = st.slider("Tip load Y [N]", min_value=-10, max_value=10, value=0)
+        with col_load_theta:
+            tip_load_torque = st.slider("Tip load Torque [Nm]", min_value=-5, max_value=5, value=0)
+
+        Q_tip = np.atleast_2d(np.array([tip_load_x, tip_load_y, tip_load_torque])).T
+
+        st.divider()
+
+        # SIMULATION PARAMETERS UI
+        with st.popover("Simulation parameters"):
+            n_segs = st.number_input("Segments [#]", min_value=4, max_value=20, value=5)
+        eq_shape = mechanics.solve_equilibrium_shape(n_segs, arm_design, pressures, Q_tip)
 
 
-# Create body-point-axes
-with col_result:
-    st.subheader("Simulated Arm")
-    fig = go.Figure()
-    mat_poses = calc_poses(arm_design.g_0, eq_shape)
-    plot_poses(mat_poses, fig)
+    # Create body-point-axes
+    with col_result:
+        st.subheader("Simulated Arm")
+        fig = go.Figure()
+        mat_poses = calc_poses(arm_design.g_0, eq_shape)
+        plot_poses(mat_poses, fig)
 
-    st.plotly_chart(fig)
+        st.plotly_chart(fig)
+        
+if __name__ == "__main__":
+    main()
