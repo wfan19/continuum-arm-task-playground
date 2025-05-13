@@ -1,3 +1,4 @@
+import numpy as np
 
 def bellow(strain, pressure):
     """
@@ -72,10 +73,97 @@ class Bellow(ActuatorModel):
         force = force;
         return force
 
-class Muscle:
+class Muscle(ActuatorModel):
     p_bounds = [0, 100]
     e_bounds = [-0.5, 0.05]
 
     @staticmethod
     def force(strain, pressure):
-        return -strain*pressure
+
+        e_crit = -0.303225592;
+        e_lim = -0.274484489;
+        
+        kIa = 3.695687763
+        kIb = [0.637225654, 0.453137516]
+        kIIa = [1.038555666, 0.511454549]
+        kIIb = [1.963398204, -3.169979385, 4.231857967]
+        kIIIa = [265.2968218, 320.5906703, 126.11975, 21.92761236]
+        kIIIb = [89998.04265, 836.5810641, 62.59606786]
+        kIV = [34610.2847, 5991.799518, -1032.874471, -395.9792747]
+
+        def freeContract_IV(strain):
+            return np.polyval(kIV + [0], strain)
+
+        def passiveExt_RIIIb(strain):
+            return np.polyval(kIIIb + [0], strain)
+
+        def pressComp_Ia(strain, pressure):
+            Pz = freeContract_IV(e_lim)
+            
+            compForce_limit = np.polyval(kIIIa + [0],e_lim)
+            critPressure = (compForce_limit/(kIb[0]*(kIb[1]+e_lim)**2))+Pz
+            
+            compForce =  np.polyval(kIIIa + [0],strain)
+            
+            k_bc = (kIb[0]*(kIb[1]+e_lim)**2)/((-e_crit+e_lim)**2)
+
+            
+            if pressure<=critPressure:
+                f = compForce;
+            else:
+                if -e_crit+strain>=0:
+                    f = compForce + k_bc*((-e_crit+strain)**2)*(pressure-critPressure);
+                else:
+                    f = compForce - kIa*((-e_crit+strain)**2)*(pressure-critPressure);
+            return f
+
+        def pressComp_Ib(strain, pressure, zfp):
+            compForce = np.polyval(kIIIa + [0],strain);
+            critPressure = (compForce/(kIb[0]*(kIb[1]+strain)**2))+zfp;
+            
+            if pressure<=critPressure:
+                f = compForce;
+            else:
+                f = compForce + kIb[0]*((kIb[1]+strain)**2)*(pressure-critPressure);
+            return f
+
+        def actuation_RIIa(strain,pressure, zfp):
+            return kIIa[0]*((kIIa[1]+strain)**2)*(pressure-zfp);
+
+        def pressureExt_RIIb(strain,pressure):
+            k_bc = np.sqrt(kIIa[0]*(kIIa[1]**2)/kIIb[0]);
+            pE = np.polyval(kIIIb+[0],strain);
+            f = pE + kIIb[0]*((k_bc+kIIb[1]*strain)**2)*(pressure**(1+kIIb[2]*strain)); 
+            return f
+
+        def passiveComp_RIIIa(strain):
+            return np.polyval(kIIIa+[0],strain);
+
+        def compute_scalar_force(strain, pressure):
+            if pressure == 0:
+                if strain >= 0: # Passive extension
+                    force = passiveExt_RIIIb(strain)
+                else:           # Passive compression
+                    force = passiveComp_RIIIa(strain)
+            else:
+                if strain >= 0: # Pressurized extension
+                    force = pressureExt_RIIb(strain, pressure)
+                else:           # Active region or pressurized compression
+                    zfp = freeContract_IV(strain)
+
+                    if pressure>=zfp:   # Active region
+                        force = actuation_RIIa(strain, pressure, zfp)
+                    else:
+                        if strain >= e_lim: # Pressurized comp 1b
+                            force = pressComp_Ib(strain, pressure, zfp)
+                        else:
+                            force = pressComp_Ia(strain, pressure)
+            return force
+
+        if hasattr(strain, "__len__"):
+            forces_out = np.zeros(strain.shape)
+            for i, strain_i in enumerate(strain):
+                forces_out[i] = -compute_scalar_force(strain_i, pressure)
+            return forces_out
+        else:
+            return -compute_scalar_force

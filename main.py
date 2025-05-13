@@ -148,7 +148,7 @@ def main():
     map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
     for i_col, col in enumerate(cols_actuator_design):
         with col:
-            actuator_model_name = st.selectbox("Model", ["Bellow", "Muscle"], key=f"actuator_model_{i_col}", disabled=design_selected)
+            actuator_model_name = st.selectbox("Model", map_model_name_to_class.keys(), key=f"actuator_model_{i_col}", disabled=design_selected)
             model_i = map_model_name_to_class[actuator_model_name]
             default_radius = st.session_state.arm_design.actuators[i_col].rho
             radius_i = st.number_input("Position [m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
@@ -158,7 +158,7 @@ def main():
     st.session_state.arm_design.actuators = actuators
 
     with st_horizontal():
-        if st.button("Save"):
+        if st.button("Save", disabled=design_selected):
             cb_save_design_dialog()
 
         with st.popover("Arm design debug"):
