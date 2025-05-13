@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from typing import List
 
 import numpy as np
+import pandas as pd
 from scipy.optimize import fsolve, least_squares
 
 from py_attainability.rod import calc_poses
@@ -13,11 +14,23 @@ class Actuator:
     f_force:    callable
     p_max:      float
 
+    @staticmethod
+    def from_lists(rhos, fs, p_maxs):
+        """
+        Constructor for creating a list of actuator objects from individual lists of parameters
+        """
+        actuators_out = []
+        for rho, f_force, p_max in zip(rhos, fs, p_maxs):
+            new_actuator = Actuator(rho, f_force, p_max)
+            actuators_out.append(new_actuator)
+        return actuators_out
+
 @dataclass
 class ArmDesign:
     actuators:  List[Actuator]
     l_0:        float       = 0.5
     g_0:        np.array    = field(default_factory=lambda: Pose2.hat(np.array([0, 0, -np.pi/2])))
+    name:       str     = "Arm"
 
 def calc_reaction_wrench(mat_segment_twists: np.array, pressures: np.array, arm_design: ArmDesign) -> np.array:
     """
