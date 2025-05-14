@@ -102,6 +102,10 @@ def cb_on_change_n_actuators():
         st.session_state.arm_design.actuators.append(mechanics.Actuator(0.0, actuator_models.Bellow))
     else:
         raise IndexError
+    
+def cb_on_change_actuator_rho(index: int):
+    actuator_rho_new = st.session_state[f"RHO_{index}"]
+    st.session_state.arm_design.actuators[index].rho = actuator_rho_new
 
 @st.dialog("Save design")
 def cb_save_design_dialog():
@@ -151,7 +155,13 @@ def main():
             actuator_model_name = st.selectbox("Model", map_model_name_to_class.keys(), key=f"actuator_model_{i_col}", disabled=design_selected)
             model_i = map_model_name_to_class[actuator_model_name]
             default_radius = st.session_state.arm_design.actuators[i_col].rho
-            radius_i = st.number_input("Position [m]", min_value=-0.5, max_value=0.5, value=default_radius, key=f"actuator_radius_{i_col}", disabled=design_selected)
+            radius_i = st.number_input(
+                "Position [m]",
+                min_value=-0.5, max_value=0.5, value=default_radius,
+                key=f"RHO_{i_col}",
+                on_change=cb_on_change_actuator_rho, args=(i_col, ),
+                disabled=design_selected
+            )
 
         actuator_i = mechanics.Actuator(radius_i, model_i)
         actuators.append(actuator_i)
