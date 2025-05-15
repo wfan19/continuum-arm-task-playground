@@ -120,6 +120,7 @@ def main():
     print("========================= Streamlit refresh =========================")
     # Initialize streamlit state variables
     initialize_st_state()
+    st.set_page_config(layout="wide")
 
     st.header("Arm designer")
     st.text("Select an existing design - or create a new one!")
