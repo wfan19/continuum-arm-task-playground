@@ -135,7 +135,7 @@ def main():
             st.button("Delete", on_click=cb_delete_selected_arm, args=(selection,))
 
     st.subheader("Design")
-    st.session_state.arm_design.l_0 = st.slider("Arm length [cm]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
+    st.session_state.arm_design.l_0 = st.slider("Arm length [m]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
 
     st.text("Actuators")
     n_actuators = st.number_input(
@@ -228,7 +228,7 @@ def main():
         fig = go.Figure()
         mat_poses = calc_poses(arm_design.g_0, eq_shape)
         plot_poses(mat_poses, fig)
-        fig.update_layout(margin=dict(t=30, b=0), height=700)
+        fig.update_layout(margin=dict(t=30, b=0), height=700, xaxis_range=[-0.6, 0.6], yaxis_range=[-1, 0.3])
 
         st.plotly_chart(fig)
         

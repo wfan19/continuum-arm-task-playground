@@ -32,11 +32,19 @@ def vee(mat_pose2):
     by extracting the relevant components
     """
     v_Pose2_out = np.zeros([3, 1])
-    v_Pose2_out[0:2] = mat_pose2[0:2, 2]
-    v_Pose2_out[2] = Rot2.vee(mat_pose2[0:2, 0:2])
+    v_Pose2_out[0:2, 0] = mat_pose2[0:2, 2]
+    v_Pose2_out[2, 0] = Rot2.vee(mat_pose2[0:2, 0:2])
+    return v_Pose2_out
 
 def logm(mat_pose2):
     raise NotImplementedError
+
+def inv(mat_pose2):
+    R = rotation(mat_pose2)
+    pose_inv = np.eye(3)
+    pose_inv[0:2, 0:2] = R.T
+    pose_inv[0:2, 2] = R.T @ translation(mat_pose2)
+    return pose_inv
 
 def adjoint(mat_pose2):
     """
