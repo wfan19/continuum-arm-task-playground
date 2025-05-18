@@ -122,58 +122,65 @@ def main():
     initialize_st_state()
     st.set_page_config(layout="wide")
 
-    st.header("Arm designer")
-    st.text("Select an existing design - or create a new one!")
-    arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
-    selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True, key=st.session_state.dataframe_key)
-    selected_rows = selection["selection"]["rows"]
-    design_selected = len(selected_rows) != 0
-    i_selected = None if not design_selected else selected_rows[0]
-    with st_horizontal():
-        st.button("Edit", on_click=cb_load_selected_arm, args=(selection,))
-        if design_selected:
-            st.button("Delete", on_click=cb_delete_selected_arm, args=(selection,))
 
-    st.subheader("Design")
-    st.session_state.arm_design.l_0 = st.slider("Arm length [m]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
+    st.header("Arm Design")
+    col_design_table, col_designer = st.columns(2)
 
-    st.text("Actuators")
-    n_actuators = st.number_input(
-        "Number of actuators [#]",
-        min_value=2,
-        max_value=6,
-        value=len(st.session_state.arm_design.actuators),
-        disabled=design_selected,
-        key="KEY_N_ACTUATORS",
-        on_change=cb_on_change_n_actuators
-    )
-    actuators = []
-    cols_actuator_design = st.columns(n_actuators, border=True)
-    model_classes = actuator_models.ActuatorModel.__subclasses__()
-    map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
-    for i_col, col in enumerate(cols_actuator_design):
-        with col:
-            actuator_model_name = st.selectbox("Model", map_model_name_to_class.keys(), key=f"actuator_model_{i_col}", disabled=design_selected)
-            model_i = map_model_name_to_class[actuator_model_name]
-            default_radius = st.session_state.arm_design.actuators[i_col].rho
-            radius_i = st.number_input(
-                "Position [m]",
-                min_value=-0.5, max_value=0.5, value=default_radius,
-                key=f"RHO_{i_col}",
-                on_change=cb_on_change_actuator_rho, args=(i_col, ),
-                disabled=design_selected
-            )
+    with col_design_table:
+        st.subheader("Select an existing design")
+        # st.text("Select an existing design - or create a new one!")
+        arm_designs_df = arm_designs_list_to_df(st.session_state.arm_designs)
+        selection = st.dataframe(arm_designs_df, selection_mode="single-row", on_select="rerun", hide_index=True, key=st.session_state.dataframe_key)
+        selected_rows = selection["selection"]["rows"]
+        design_selected = len(selected_rows) != 0
+        i_selected = None if not design_selected else selected_rows[0]
+        with st_horizontal():
+            st.button("Edit", on_click=cb_load_selected_arm, args=(selection,))
+            if design_selected:
+                st.button("Delete", on_click=cb_delete_selected_arm, args=(selection,))
 
-        actuator_i = mechanics.Actuator(radius_i, model_i)
-        actuators.append(actuator_i)
-    st.session_state.arm_design.actuators = actuators
+    with col_designer:
+        # st.subheader("Design")
+        st.subheader("...or create a new one!")
+        st.session_state.arm_design.l_0 = st.slider("Arm length [m]", min_value=0.1, max_value=1.0, value=0.5, disabled=design_selected)
 
-    with st_horizontal():
-        if st.button("Save", disabled=design_selected):
-            cb_save_design_dialog()
+        st.text("Actuators")
+        n_actuators = st.number_input(
+            "Number of actuators [#]",
+            min_value=2,
+            max_value=6,
+            value=len(st.session_state.arm_design.actuators),
+            disabled=design_selected,
+            key="KEY_N_ACTUATORS",
+            on_change=cb_on_change_n_actuators
+        )
+        actuators = []
+        cols_actuator_design = st.columns(n_actuators, border=True)
+        model_classes = actuator_models.ActuatorModel.__subclasses__()
+        map_model_name_to_class = {subclass.__name__: subclass for subclass in model_classes}
+        for i_col, col in enumerate(cols_actuator_design):
+            with col:
+                actuator_model_name = st.selectbox("Model", map_model_name_to_class.keys(), key=f"actuator_model_{i_col}", disabled=design_selected)
+                model_i = map_model_name_to_class[actuator_model_name]
+                default_radius = st.session_state.arm_design.actuators[i_col].rho
+                radius_i = st.number_input(
+                    "Position [m]",
+                    min_value=-0.5, max_value=0.5, value=default_radius,
+                    key=f"RHO_{i_col}",
+                    on_change=cb_on_change_actuator_rho, args=(i_col, ),
+                    disabled=design_selected
+                )
 
-        with st.popover("Arm design debug"):
-            st.write(st.session_state.arm_design)
+            actuator_i = mechanics.Actuator(radius_i, model_i)
+            actuators.append(actuator_i)
+        st.session_state.arm_design.actuators = actuators
+
+        with st_horizontal():
+            if st.button("Save", disabled=design_selected):
+                cb_save_design_dialog()
+
+            with st.popover("Arm design debug"):
+                st.write(st.session_state.arm_design)
 
     # Create arm design objects
     if design_selected:
@@ -183,9 +190,9 @@ def main():
 
     st.divider()
 
+    st.header("Simulation")
     col_params, col_result = st.columns(2)
     with col_params:
-
         # CONTROL UI
         st.subheader("Control")
         cols = st.columns(len(arm_design.actuators))
@@ -224,7 +231,7 @@ def main():
 
     # Create body-point-axes
     with col_result:
-        st.subheader("Simulated Arm")
+        st.subheader("Result")
         fig = go.Figure()
         eq_poses = calc_poses(arm_design.g_0, eq_shape)
         plot_poses(eq_poses, fig)
