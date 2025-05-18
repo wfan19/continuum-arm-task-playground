@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 import time
 
 import numpy as np
-
 from scipy.optimize import minimize
 
 from py_attainability.mechanics import ArmDesign, solve_equilibrium_shape
@@ -14,7 +13,7 @@ class Task:
     backbone_shape:     np.array
     tip_load:           np.array = field(default_factory=lambda: np.atleast_2d(np.array([0, 0, 0])).T)
 
-def check_feasibility_naive(N_segments: int, arm_design: ArmDesign, task: Task, p_initial = None, poses_to_count = None):
+def check_attainability_naive(N_segments: int, arm_design: ArmDesign, task: Task, p_initial = None, poses_to_count = None):
     """
     Naively check the feasibility of a task by solving the control problem - match the task shape while
     subject to the task load - to the best of the arm's ability.

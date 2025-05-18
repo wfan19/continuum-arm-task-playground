@@ -4,8 +4,9 @@ import numpy as np
 from py_attainability.lie import Pose2
 from py_attainability.plotters import plot_poses
 from py_attainability.rod import calc_poses
-from py_attainability import mechanics
-from py_attainability.task_feasibility import Task, check_feasibility_naive
+from py_attainability import mechanics, actuator_models
+from py_attainability.task_attainability import Task, check_attainability_naive
+from py_attainability.wrench_hulls import calc_attainable_wrench_hull
 
 st.title("Task attainability")
 
@@ -27,4 +28,18 @@ arm_design_1.l_0 = 0.4
 arm_design_1.name="Default arm"
 
 # st.text(check_feasibility_naive(N_segments, arm_design_1, example_task_no_load))
-st.text(check_feasibility_naive(N_segments, arm_design_1, example_task_loaded, p_initial=np.array([0, 0])))
+# st.text(check_attainability_naive(N_segments, arm_design_1, example_task_loaded, p_initial=np.array([0, 0])))
+
+four_bellow_radii = [-0.1, -0.03, 0.03, 0.06]
+models = [actuator_models.Bellow for i in range(4)]
+actuators = mechanics.Actuator.from_lists(four_bellow_radii, models)
+arm_design_four_bellows = mechanics.ArmDesign(actuators, l_0=0.4, name="Four bellows")
+abs_wrench_hull, rltv_wrench_hull = calc_attainable_wrench_hull(N_segments, arm_design_four_bellows, example_task_no_load)
+col_1, col_2 = st.columns(2)
+with col_1:
+    st.text("Absolute wrench hull")
+    st.text(abs_wrench_hull)
+
+with col_2:
+    st.text("Relative wrench hull")
+    st.text(rltv_wrench_hull)
