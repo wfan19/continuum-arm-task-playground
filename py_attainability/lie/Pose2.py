@@ -43,7 +43,7 @@ def inv(mat_pose2):
     R = rotation(mat_pose2)
     pose_inv = np.eye(3)
     pose_inv[0:2, 0:2] = R.T
-    pose_inv[0:2, 2] = R.T @ translation(mat_pose2)
+    pose_inv[0:2, 2] = -R.T @ translation(mat_pose2)
     return pose_inv
 
 def adjoint(mat_pose2):

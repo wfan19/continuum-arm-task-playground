@@ -226,11 +226,22 @@ def main():
     with col_result:
         st.subheader("Simulated Arm")
         fig = go.Figure()
-        mat_poses = calc_poses(arm_design.g_0, eq_shape)
-        plot_poses(mat_poses, fig)
+        eq_poses = calc_poses(arm_design.g_0, eq_shape)
+        plot_poses(eq_poses, fig)
         fig.update_layout(margin=dict(t=30, b=0), height=700, xaxis_range=[-0.6, 0.6], yaxis_range=[-1, 0.3])
 
         st.plotly_chart(fig)
+
+        col_twist_popover, col_poses_popover = st.columns(2)
+        with col_twist_popover:
+            with st.popover("Equilibrium twist"):
+                st.write(eq_shape)
+
+        with col_poses_popover:
+            with st.popover("Equilibrium poses"):
+                mat_v_poses = np.concatenate([Pose2.vee(pose_i) for pose_i in eq_poses], 1)
+                st.write(mat_v_poses)
+
         
 if __name__ == "__main__":
     main()
