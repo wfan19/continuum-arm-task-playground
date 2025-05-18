@@ -1,12 +1,12 @@
 import streamlit as st
 import numpy as np
+import plotly.graph_objects as go
 
 from py_attainability.lie import Pose2
-from py_attainability.plotters import plot_poses
 from py_attainability.rod import calc_poses
-from py_attainability import mechanics, actuator_models
+from py_attainability.plotters import plot_abs_wrench_hull
+from py_attainability import mechanics, actuator_models, wrench_hulls
 from py_attainability.task_attainability import Task, check_attainability_naive
-from py_attainability.wrench_hulls import calc_attainable_wrench_hull
 
 st.title("Task attainability")
 
@@ -34,7 +34,16 @@ four_bellow_radii = [-0.1, -0.03, 0.03, 0.06]
 models = [actuator_models.Bellow for i in range(4)]
 actuators = mechanics.Actuator.from_lists(four_bellow_radii, models)
 arm_design_four_bellows = mechanics.ArmDesign(actuators, l_0=0.4, name="Four bellows")
-abs_wrench_hull, rltv_wrench_hull = calc_attainable_wrench_hull(N_segments, arm_design_four_bellows, example_task_no_load)
+abs_wrench_hull, rltv_wrench_hull = wrench_hulls.calc_attainable_wrench_hull(N_segments, arm_design_four_bellows, example_task_no_load)
+
+fig = go.Figure()
+# square_points = wrench_hulls.sample_edges_of_cuboid(2, [10, 10])
+# cube_points_no_z = [square_points, square_points]
+# plot_abs_wrench_hull(cube_points_no_z, fig)
+plot_abs_wrench_hull(abs_wrench_hull, fig)
+fig.update_layout(height=600, width=600)
+st.plotly_chart(fig)
+
 col_1, col_2 = st.columns(2)
 with col_1:
     st.text("Absolute wrench hull")

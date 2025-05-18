@@ -69,3 +69,12 @@ def plot_poses(mat_poses, fig=go.Figure()):
     fig.update_yaxes(scaleanchor="x", scaleratio=1)
     fig.update_layout(height=800)
     return fig
+
+def plot_abs_wrench_hull(abs_wrench_hull, fig):
+    xs, ys, zs = [[] for i in range(3)]
+    for i, force_moment_i in enumerate(abs_wrench_hull):
+        xs += force_moment_i[0, :].tolist()
+        ys += force_moment_i[1, :].tolist()
+        zs += (i * np.ones(force_moment_i.shape[1])).tolist()
+
+    fig.add_trace(go.Mesh3d(x=xs, y=ys, z=zs, color='lightpink', opacity=0.5, alphahull=0))
