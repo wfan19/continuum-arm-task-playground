@@ -3,7 +3,7 @@ import numpy as np
 
 from py_attainability.lie import Pose2
 
-def plot_poses(mat_poses, fig=go.Figure()):
+def plot_poses(mat_poses, fig=go.Figure(), plot_transforms=False, linecolor="darkgray"):
     body_points_axes = np.zeros([2, 2, 3*mat_poses.shape[0]])
     axis_length=0.05
     idx = 0
@@ -40,31 +40,32 @@ def plot_poses(mat_poses, fig=go.Figure()):
         mode="markers+lines",
         name="Poses",
         legendgroup="backbone",
-        line=dict(color="darkgray", width=linewidth),
+        line=dict(color=linecolor, width=linewidth),
         marker=dict(size=marker_size, color="gray")
     ))
 
-    axis_name = ["X", "Y", "Z"]
-    for i_axis, axis in enumerate(body_points_axes):
-        fig.add_trace(go.Scatter(
-            x = axis[0, :],
-            y = axis[1, :],
-            name=f"Transforms",
-            mode="lines+markers",
-            showlegend=True if i_axis == 0 else False,
-            legendgroup="transforms",
-            marker=dict(color=axis_colors[i_axis], size=quiver_size)
-        ))
+    if plot_transforms:
+        axis_name = ["X", "Y", "Z"]
+        for i_axis, axis in enumerate(body_points_axes):
+            fig.add_trace(go.Scatter(
+                x = axis[0, :],
+                y = axis[1, :],
+                name=f"Transforms",
+                mode="lines+markers",
+                showlegend=True if i_axis == 0 else False,
+                legendgroup="transforms",
+                marker=dict(color=axis_colors[i_axis], size=quiver_size)
+            ))
 
-    fig.add_trace(go.Scatter(
-        x=xs,
-        y = ys,
-        mode="markers",
-        name="Poses",
-        legendgroup="backbone",
-        showlegend=False,
-        marker=dict(size=marker_size, color="darkgray")
-    ))
+        fig.add_trace(go.Scatter(
+            x=xs,
+            y = ys,
+            mode="markers",
+            name="Poses",
+            legendgroup="backbone",
+            showlegend=False,
+            marker=dict(size=marker_size, color="darkgray")
+        ))
 
     fig.update_yaxes(scaleanchor="x", scaleratio=1)
     fig.update_layout(height=800)

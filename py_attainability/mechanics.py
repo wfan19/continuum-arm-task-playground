@@ -4,6 +4,7 @@ from typing import List
 import numpy as np
 import pandas as pd
 from scipy.optimize import fsolve, least_squares
+import streamlit as st
 
 from py_attainability.rod import calc_poses
 from py_attainability.lie import Pose2
@@ -118,6 +119,7 @@ def equilibrium_residual(mat_segment_twists, arm_design, pressures, tip_wrench):
     residual[1, :] += mat_segment_twists[1, :] * 1e3
     return residual
 
+# @st.cache_data
 def solve_equilibrium_shape(N_segments, arm_design, pressures, tip_wrench):
     default_segment_twists = np.zeros([3, N_segments])
     default_segment_twists[0, :] = arm_design.l_0
@@ -130,6 +132,6 @@ def solve_equilibrium_shape(N_segments, arm_design, pressures, tip_wrench):
         residual = equilibrium_residual(mat_segment_twists, arm_design, pressures, tip_wrench)
         return residual.ravel()
 
-    soln = least_squares(f_residual_vectorized, default_segment_twists.ravel(), method="lm", ftol=1e-8, xtol=1e-8)
+    soln = least_squares(f_residual_vectorized, default_segment_twists.ravel(), method="lm", ftol=1e-12, xtol=1e-12)
     print(soln)
-    return np.reshape(soln.x, [3, N_segments])
+    return np.reshape(soln.x, [3, N_segments]), soln
